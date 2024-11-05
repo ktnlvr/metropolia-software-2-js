@@ -52,27 +52,81 @@ async function getItinerary(start, end) {
 }
 
 // https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+// https://github.com/googlemaps/js-polyline-codec/blob/d0b4f42f6409d7e4d68f317578cf23c61c5ed939/src/index.ts
+// Stolen from Google, respectfully
+function decodePolyline(encodedPath) {
+    /**
+     * Copyright 2020 Google LLC
+     *
+     * Licensed under the Apache License, Version 2.0 (the "License");
+     * you may not use this file except in compliance with the License.
+     * You may obtain a copy of the License at
+     *
+     *      http://www.apache.org/licenses/LICENSE-2.0
+     *
+     * Unless required by applicable law or agreed to in writing, software
+     * distributed under the License is distributed on an "AS IS" BASIS,
+     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     * See the License for the specific language governing permissions and
+     * limitations under the License.
+     */
 
-// https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+    const factor = Math.pow(10, 5);
 
-function decodePolylineNumber(str) {
-    chunks = str
-      .split('')
-      .map((x) => (x.charCodeAt(0) - 63) & 0b11111)
-    let out = 0;
-    for (let i = 0; i < chunks.length; i++)
-      out |= (chunks[i] ^ 0) << (5 * i)
-    return (~out >> 1) / 1e5
-}
+    const len = encodedPath.length;
+  
+    // For speed we preallocate to an upper bound on the final length, then
+    // truncate the array before returning.
+    const path = new Array(Math.floor(encodedPath.length / 2));
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+    let pointIndex = 0;
+  
+    // This code has been profiled and optimized, so don't modify it without
+    // measuring its performance.
+    for (; index < len; ++pointIndex) {
+      // Fully unrolling the following loops speeds things up about 5%.
+      let result = 1;
+      let shift = 0;
+      let b;
+      do {
+        // Invariant: "result" is current partial result plus (1 << shift).
+        // The following line effectively clears this bit by decrementing "b".
+        b = encodedPath.charCodeAt(index++) - 63 - 1;
+        result += b << shift;
+        shift += 5;
+      } while (b >= 0x1f); // See note above.
+      lat += result & 1 ? ~(result >> 1) : result >> 1;
+  
+      result = 1;
+      shift = 0;
+      do {
+        b = encodedPath.charCodeAt(index++) - 63 - 1;
+        result += b << shift;
+        shift += 5;
+      } while (b >= 0x1f);
+      lng += result & 1 ? ~(result >> 1) : result >> 1;
+  
+      path[pointIndex] = [lat / factor, lng / factor];
+    }
 
-function decodePolyline(polylineStr) {
+    path.length = pointIndex;
+  
+    return path;
 }
 
 (async () => {
+    const scroll = document.getElementById("scroll")
+
     const urlParams = new URLSearchParams(window.location.search)
     const addr = urlParams.get("addr")
-    if (addr == undefined)
+    if (addr == undefined) {
+        scroll.textContent = "pls specify the start"
         return
+    }
+
+    scroll.textContent =  `${addr} → Karaportti 2`
 
     start = await getLocation(addr)
     end = await getLocation("Karaportti 2")
@@ -83,21 +137,26 @@ function decodePolyline(polylineStr) {
     startPos = (await start.json()).features[0].geometry.coordinates
     endPos = (await end.json()).features[0].geometry.coordinates
 
-    console.log(startPos, endPos)
-
     let response = await (await getItinerary(startPos, endPos)).json()
-    console.log(response)
     let geometry = response.data.plan.itineraries[0].legs[0].legGeometry
-    console.log(geometry.length)
-    console.log(geometry.points)
+    let polyline = decodePolyline(geometry.points)
+    console.assert(geometry.length == polyline.length)
+    centerX = 0
+    centerY = 0
+    for (const [x, y] of polyline) {
+        centerX += x / polyline.length
+        centerY += y / polyline.length
+    }
+    console.log(centerX, centerY)
 
-    var map = L.map('map').setView([51.505, -0.09], 13);
-    L.tileLayer(`https://tile.openstreetmap.org/{z}/{x}/{y}.png`, {
+    const map_url = `https://cdn.digitransit.fi/map/v2/hsl-map-en-256/{z}/{x}/{y}@2x.png?digitransit-subscription-key=${key}`
+    var map = L.map('map').setView([centerX, centerY], 15);
+    L.tileLayer(map_url, {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
-
-    console.log(polyline.length)
+    let line = L.polyline(polyline, {color: '#007AC9'}).addTo(map);
+    map.fitBounds(line.getBounds())
 
     return
 })()

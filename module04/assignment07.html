@@ -4,14 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assignment 7</title>
-    <script src="assignment07.js" defer></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin=""/>
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin="" defer/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-        crossorigin=""></script>
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="" defer></script>
+    <script src="assignment07.js" defer></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto&family=Varela+Round&display=swap');
+        
+        * {
+            font-family: "Varela Round", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
         main {
             font-size: 32pt;
             margin: 0 20%;
@@ -28,6 +36,9 @@
         <form>
             Address: <input type="text" name="addr">
             <button type="submit">Submit</button>
+            <!-- I know, I know, it's deprecated. But still, looks very fitting! -->
+            <!-- If HSL busses can have a marquee inside, why not my code? -->
+            <marquee id="scroll" scrollamount="16"><b>Navigating to Karaporti, 2</b></marquee>
         </form>
         <div id="map"></div>
     </main>
