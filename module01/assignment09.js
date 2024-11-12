@@ -4,7 +4,7 @@ function isPrime(n) {
             console.log(n)
             return true;
         }
-    return n < 1;
+    return n < 2;
 }
 
 let n = parseInt(prompt("Number?"))
